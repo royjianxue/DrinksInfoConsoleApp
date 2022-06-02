@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -10,14 +11,19 @@ namespace DrinksInfo
     public class TableVisualization
     {
         //using https://github.com/minhhungit/ConsoleTableExt package for table presentation
-        public static void ShowTable(List<Category> tableData)
+        public static void ShowTable<T>(List<T> tableData, [AllowNull] string tableName) where T : class
         {
-            Console.WriteLine("\n");
+            Console.Clear();
+
+            if (tableName == null)
+                tableName = "";
+
             ConsoleTableBuilder
-            .From(tableData)
-            .WithTitle("Drink Menu")
-            .ExportAndWriteLine(TableAligntment.Left);
-            Console.WriteLine("");
+                .From(tableData)
+                .WithColumn(tableName)
+                .WithFormat(ConsoleTableBuilderFormat.Alternative)
+                .ExportAndWriteLine(TableAligntment.Center);
+            Console.WriteLine("\n\n");
         }
     }
 }
