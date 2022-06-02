@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Reflection;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Web;
@@ -16,24 +17,21 @@ namespace DrinksInfo
 
         static void Main(string[] args)
         {
+            DisplayCategoryMenu();
+            ChoseDrinkCategories();
+            ChoseDrinkIngredits();
 
-            RunninnSelection();
         }
-
-
         static void DisplayCategoryMenu()
         {          
             var myDrinkCategories = GetDrinkCategories();
 
-            TableVisualization.ShowTable(myDrinkCategories, "Categories Menu: ");
+            TableVisualization.ShowTable(myDrinkCategories, "Categories Menu");
+
         }
-
-
-        static void RunninnSelection()
+        static void ChoseDrinkCategories()
         {
             bool isValidCategory = false;
-
-            DisplayCategoryMenu();
 
             string chosenDrinkCategory = "";
 
@@ -45,29 +43,86 @@ namespace DrinksInfo
 
             } while (isValidCategory == false);
 
-            var myDrinks = GetDrinks(chosenDrinkCategory);
+            var myDrinks = GetDrinksByName(chosenDrinkCategory);
 
             TableVisualization.ShowTable(myDrinks, "Drinks Menu");
         }
 
-
-        static bool IsUserChoiceCategoryInTheMenu(string chosenDrinkCategory)
+        static void ChoseDrinkIngredits()
         {
-            var myDrinkCategories = GetDrinkCategories();
+            bool isValidCategory = false;
 
-            foreach (var item in myDrinkCategories)
+            string chosenDrinkCategory = "";
+
+            do
             {
-                if (item.StrCategory.ToLower() == chosenDrinkCategory.ToLower())
-                {
-                    var drinks = GetDrinks(chosenDrinkCategory);
+                chosenDrinkCategory = UserInput.AskUserStringInput("Choose your drink to display drink detail: ");
 
-                    return true;
+                isValidCategory = IsUserChoiceCategoryInTheMenu(chosenDrinkCategory, true);
+
+            } while (isValidCategory == false);
+
+            var myDrinks = GetDrinksDetailByID(chosenDrinkCategory);
+
+
+            DrinkDetail drinks = myDrinks[0];
+
+            List<object> prepList = new();
+
+            string formattedName = "";
+
+            foreach (PropertyInfo prop in drinks.GetType().GetProperties())
+            {
+
+                if (prop.Name.Contains("str"))
+                {
+                    formattedName = prop.Name.Substring(3);
                 }
 
+                if (!string.IsNullOrEmpty(prop.GetValue(drinks)?.ToString()))
+                {
+                    prepList.Add(new
+                    {
+                        Key = formattedName,
+                        Value = prop.GetValue(drinks)
+                    });
+                }
             }
-            return false;
+            TableVisualization.ShowTable(prepList, "Drink Detail Menu");
         }
+ 
+        static bool IsUserChoiceCategoryInTheMenu(string chosenDrinkCategory, bool searchForDrinksDetail = false)
+        {           
 
+            if (searchForDrinksDetail == false)
+            {
+                var myDrinkCategories = GetDrinkCategories();
+
+                foreach (var item in myDrinkCategories)
+                {
+                    if (item.StrCategory.ToLower() == chosenDrinkCategory.ToLower())
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            else
+            {
+                var myDrinkCategories = GetDrinksDetailByID(chosenDrinkCategory);
+
+                foreach (var item in myDrinkCategories)
+                {
+                    if (item.IdDrink == chosenDrinkCategory)
+                    {                     
+
+                        return true;
+                    }
+                }
+                return false;
+            }  
+
+        }
 
         static List<Category> GetDrinkCategories()
         {
@@ -78,15 +133,25 @@ namespace DrinksInfo
             return categories;
         }
 
-        static List<Drink> GetDrinks(string input)
+        static List<Drink> GetDrinksByName(string input)
         {
             string drinkList = GetData($"/filter.php?c={HttpUtility.UrlEncode(input)}").Result;
 
             var drinks = JsonConvert.DeserializeObject<Drinks>(drinkList).DrinkList;
 
             return drinks;
-
         }
+
+
+        static List<DrinkDetail> GetDrinksDetailByID(string input)
+        {
+            string drinkList = GetData($"/lookup.php?i={HttpUtility.UrlEncode(input)}").Result;
+
+            var drinks = JsonConvert.DeserializeObject<DrinksDetail>(drinkList).Drinks;
+
+            return drinks;
+        }
+
 
         static async Task<string> GetData(string url)
         {
@@ -102,6 +167,8 @@ namespace DrinksInfo
 
             return response.Content;
         }
+
+
 
 
     }
